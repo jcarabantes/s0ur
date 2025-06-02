@@ -6,10 +6,11 @@ from impacket.dcerpc.v5 import samr
 from impacket.dcerpc.v5.samr import SAMPR_USER_INFO_BUFFER
 from impacket.dcerpc.v5 import transport
 from datetime import datetime
-from config import *
+from functions import *
 import logging
 import sys
 import time
+import getpass
 
 # ToDo: 
 # - pending analysis of userAccountControl
@@ -21,7 +22,6 @@ import time
 # check for Protection DenyLogon property (https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1#L779)
 
 # Test attrs: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.200.200 -D "CN=M RS,CN=Users,DC=domain,DC=local" -W
-
 
 # Simplified class from GetADUsers.py
 class SimpleADUsers:
@@ -43,6 +43,14 @@ class SimpleADUsers:
         t //= 10000000
         return t
 
+    def _changeGeneralizedTime(self, gt):
+        
+        # whenCreated and other fields return values like: whenCreated: 20250320064604.0Z and whenChanged: 20250320064749.0Z
+        # remove 0Z from the LDAP output
+        noZ = gt.split('.')[0]
+        formated_date = datetime.strptime(noZ, "%Y%m%d%H%M%S")
+        return formated_date.strftime("%Y-%m-%d %H:%M:%S")
+
     def _processRecord(self, item):
         if not isinstance(item, SearchResultEntry):
             return
@@ -51,7 +59,7 @@ class SimpleADUsers:
         pwdLastSet = ''
         mail = ''
         lastLogon = 'N/A'
-        description = 'N/A'
+        whenCreated = 'N/A'
 
         if debug: print(item['attributes'])
 
@@ -64,19 +72,23 @@ class SimpleADUsers:
                         sAMAccountName = name
                 elif attr_type == 'pwdLastSet':
                     val = int(str(attribute['vals'][0]))
-                    pwdLastSet = "<never>" if val == 0 else str(datetime.fromtimestamp(self.getUnixTime(val)))
+                    pwdLastSet = "<never>" if val == 0 else str(datetime.fromtimestamp(self._getUnixTime(val)))
                 elif attr_type == 'lastLogon':
                     val = int(str(attribute['vals'][0]))
-                    lastLogon = "<never>" if val == 0 else str(datetime.fromtimestamp(self.getUnixTime(val)))
+                    lastLogon = "<never>" if val == 0 else str(datetime.fromtimestamp(self._getUnixTime(val)))
                 # elif attr_type == 'mail':
                 #     mail = str(attribute['vals'][0])
+                elif attr_type == 'whenCreated':
+                    val = str(attribute['vals'][0])
+                    whenCreated = str(self._changeGeneralizedTime(val))
+                   # description = str(attribute['vals'][0])
                 elif attr_type == 'description':
                     description = str(attribute['vals'][0])
 
             if sAMAccountName:
                 # ["sAMAccountName", "description", "lastLogon", "userAccountControl","whenCreated"]
                 # print(self.outputFormat.format(sAMAccountName, description, mail, pwdLastSet, lastLogon))
-                print(self.outputFormat.format(sAMAccountName, pwdLastSet, lastLogon, description))
+                print(self.outputFormat.format(sAMAccountName, pwdLastSet, lastLogon, whenCreated))
 
         except Exception as e:
             logging.debug("Exception", exc_info=True)
@@ -140,6 +152,33 @@ class SimpleADUsers:
             logging.debug("Exception", exc_info=True)
             logging.error(f"Error processing record: {e}")
 
+    def processWhenCreated(self, item):
+        if not isinstance(item, SearchResultEntry):
+            return
+
+        sAMAccountName = ''
+        lastLogon = None
+
+        if debug: print("processWhenCreated", item['attributes'])
+
+        try:
+            for attribute in item['attributes']:
+                attr_type = str(attribute['type'])
+                if attr_type == 'sAMAccountName':
+                    name = attribute['vals'][0].asOctets().decode('utf-8')
+                    if not name.endswith('$'):
+                        sAMAccountName = name
+                elif attr_type == 'whenCreated':
+                    val = str(attribute['vals'][0])
+                    whenCreated = str(self._changeGeneralizedTime(val))
+
+            if sAMAccountName and whenCreated:
+                print((sAMAccountName, whenCreated))
+
+        except Exception as e:
+            logging.debug("Exception", exc_info=True)
+            logging.error(f"Error processing record: {e}")
+
     def fetch_non_empty_descriptions(self, ldap_conn, search_filter):
         print("Showing users' description if there's any passwords, care.")
         sc = ldap.SimplePagedResultsControl(size=100)
@@ -156,10 +195,19 @@ class SimpleADUsers:
                              searchControls=[sc],
                              perRecordCallback=self.processLastLogon)
 
+    def recent_users(self, ldap_conn, search_filter):
+        print("Showing creation date for each user")
+        sc = ldap.SimplePagedResultsControl(size=100)
+        ldap_conn.search(searchFilter=search_filter,
+                             attributes=["sAMAccountName", "whenCreated"],
+                             searchControls=[sc],
+                             perRecordCallback=self.processWhenCreated)
+
     def run(self):
         print(self.outputFormat.format(*self.properties))
         print('  '.join(['-' * l for l in self.colLen]))
-
+        properties = ["sAMAccountName", "pwdLastSet", "lastLogon", "whenCreated"]
+        #properties = ["sAMAccountName", "pwdLastSet", "lastLogon", "description"]
         try:
             ldap_conn = ldap.LDAPConnection(f'ldap://{self.dc_ip}', self.baseDN)
             ldap_conn.login(self.username, self.password, self.domain.split(',')[0].split('=')[1])
@@ -167,9 +215,9 @@ class SimpleADUsers:
             search_filter = "(&(objectCategory=person)(objectClass=user))"
             sc = ldap.SimplePagedResultsControl(size=100)
             ldap_conn.search(searchFilter=search_filter,
-                             attributes=self.properties,
+                             attributes=properties,
                              searchControls=[sc],
-                             perRecordCallback=self.processRecord)
+                             perRecordCallback=self._processRecord)
 
             ldap_conn.close()
 
@@ -181,30 +229,45 @@ class SimpleADUsers:
 
 def main():
     global debug
-    debug = False if len(sys.argv) == 1 else True
+    args = parse_args()
+    debug = args.debug
 
-    ad = SimpleADUsers(username, password, domain, dc_ip)
+    if not args.password:
+        args.password = getpass.getpass("Password: ")
 
-    try:
-        ldap_conn = ldap.LDAPConnection(f'ldap://{ad.dc_ip}', ad.baseDN)
-        ldap_conn.login(ad.username, ad.password, ad.domain.split(',')[0].split('=')[1])
+    if args.mode == "ldap":
+        ad = SimpleADUsers(args.username, args.password, args.domain, args.dc_ip)
 
-        search_filter = "(&(objectCategory=person)(objectClass=user))"
+        try:
+            ldap_conn = ldap.LDAPConnection(f'ldap://{ad.dc_ip}', ad.baseDN)
+            ldap_conn.login(ad.username, ad.password, ad.domain.split(',')[0].split('=')[1])
 
-        # check for obvious descriptions like passwords and be carefull
-        ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
+            search_filter = "(&(objectCategory=person)(objectClass=user))"
 
-        # never logged users
-        ad.never_logged(ldap_conn, search_filter)
+            # check for obvious descriptions like passwords and be carefull
+            # ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
 
-        ldap_conn.close()
-    except ldap.LDAPSearchError as e:
-        logging.error(f"LDAP search failed: {e}")
+            # never logged users
+            # ad.never_logged(ldap_conn, search_filter)
+
+            # recent users creation
+            # ad.recent_users(ldap_conn, search_filter)
+            
+            ad.run()
+
+            ldap_conn.close()
+        except ldap.LDAPSearchError as e:
+            logging.error(f"LDAP search failed: {e}")    
+    
+    elif args.mode == "adws":
+        print("[!] 'adws' mode is not yet implemented. TODO.")
+    else:
+        print("[-] Unknown mode.")
 
 
+    
 
-    # recent users creation
-    # ad.recent_users()
+    
 
     # users in juicy groups can also be a problem
     # ad.get_members_of(['Backup Operators','etc'])
@@ -212,14 +275,6 @@ def main():
     # extract the Fine-Grained Password Policies (FGPP) or users or groups may help to detect
     # users with bad passwords policies > possible honeypots
     # ad.get_password_policies() # pending test first policies.py
-
-    # ad.run()
-    
-    # executer = GetADUsers(username, password, domain, options)
-    # executer.run()
-
-    # users = get_domain_users(dc_ip, domain, username, password)
-    # for user in users: print(user)
   
 if __name__ == "__main__":
     main()
