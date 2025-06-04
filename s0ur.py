@@ -20,6 +20,7 @@ import getpass
 # Deploy-ComputerDeception
 # Deploy-PrivilegedUserDeception
 # check for Protection DenyLogon property (https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1#L779)
+# improve output, change functions and methods datatypes on signatures
 
 # Test attrs: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.200.200 -D "CN=M RS,CN=Users,DC=domain,DC=local" -W
 
@@ -263,11 +264,6 @@ def main():
         print("[!] 'adws' mode is not yet implemented. TODO.")
     else:
         print("[-] Unknown mode.")
-
-
-    
-
-    
 
     # users in juicy groups can also be a problem
     # ad.get_members_of(['Backup Operators','etc'])
