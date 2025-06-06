@@ -20,9 +20,10 @@ import getpass
 # Deploy-ComputerDeception
 # Deploy-PrivilegedUserDeception
 # check for Protection DenyLogon property (https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1#L779)
-# improve output, change functions and methods datatypes on signatures
-
-# Test attrs: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.200.200 -D "CN=M RS,CN=Users,DC=domain,DC=local" -W
+# improve output
+# add --query all or specific ldap query (such as just non-empty descriptions, etc.)
+# Test attrs: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.1.10 -D "CN=M RS,CN=Users,DC=evilcorp,DC=local" -W
+# Improve debug output too
 
 # Simplified class from GetADUsers.py
 class SimpleADUsers:
@@ -246,15 +247,15 @@ def main():
             search_filter = "(&(objectCategory=person)(objectClass=user))"
 
             # check for obvious descriptions like passwords and be carefull
-            # ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
+            ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
 
             # never logged users
-            # ad.never_logged(ldap_conn, search_filter)
+            ad.never_logged(ldap_conn, search_filter)
 
             # recent users creation
-            # ad.recent_users(ldap_conn, search_filter)
+            ad.recent_users(ldap_conn, search_filter)
             
-            ad.run()
+            # ad.run()
 
             ldap_conn.close()
         except ldap.LDAPSearchError as e:
@@ -273,4 +274,5 @@ def main():
     # ad.get_password_policies() # pending test first policies.py
   
 if __name__ == "__main__":
+    banner()
     main()
