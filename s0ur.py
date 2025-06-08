@@ -14,17 +14,18 @@ import getpass
 # Deploy-PrivilegedUserDeception
 # check for Protection DenyLogon property (https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1#L779)
 # add --query all or specific ldap query (such as just non-empty descriptions, etc.)
-# Test attrs: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.1.10 -D "CN=M RS,CN=Users,DC=evilcorp,DC=local" -W
 # Improve debug output too
+# Add jitter or delays between each query to break a possible hunting chain analysis
 
 def main():
 
     # s0ur.py ldap -dc-ip -d "DC=evilcorp,DC=local" -u username -p password
     # s0ur.py adws -dc-ip -d "DC=evilcorp,DC=local" -u username -p password
+    # Test attrs: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.1.10 -D "CN=M RS,CN=Users,DC=evilcorp,DC=local" -W
+    # Specific query: ldapsearch -x -b  dc=domain,dc=local -H ldap://192.168.1.10 -D "CN=M RS,CN=Users,DC=evilcorp,DC=local" "(objectClass=group)" -W
 
     global debug
     args = parse_args()
-    #debug = args.debug
 
     if not args.password:
         args.password = getpass.getpass("Password: ")
@@ -47,6 +48,21 @@ def main():
             # recent users creation
             ad.recent_users(ldap_conn, search_filter)
 
+            # users in juicy groups can also be a problem
+            juicy_groups = [
+                "Domain Admins",
+                "Enterprise Admins",
+                "Backup Operators",
+                "Account Operators",
+                "DNSAdmins",
+                "Print Operators",
+                "Server Operators",
+                "Remote Desktop Users",
+                "Power Users",
+                "Schema Admins"
+            ]
+            ad.get_members_of(ldap_conn, juicy_groups)
+
             ldap_conn.close()
         except ldap.LDAPSearchError as e:
             logging.error(f"LDAP search failed: {e}")    
@@ -56,8 +72,7 @@ def main():
     else:
         print("[-] Unknown mode.")
 
-    # users in juicy groups can also be a problem
-    # ad.get_members_of(['Backup Operators','etc'])
+    
 
     # extract the Fine-Grained Password Policies (FGPP) or users or groups may help to detect
     # users with bad passwords policies > possible honeypots

@@ -23,7 +23,8 @@ class SimpleADUsers:
         self.attributes_list = [
             ["sAMAccountName", "description"],
             ["sAMAccountName", "lastLogon"],
-            ["sAMAccountName", "whenCreated"]
+            ["sAMAccountName", "whenCreated"],
+            ["samAccountName", "member"]
         ]
         self.rows = [] # this will be used with tabulate when printing results
         
@@ -177,6 +178,31 @@ class SimpleADUsers:
             logging.debug("Exception", exc_info=True)
             logging.error(f"Error processing record: {e}")
 
+    def processGroupMembers(self, item):
+        if not isinstance(item, SearchResultEntry):
+            return
+
+        group_name = ""
+        members = []
+
+        if self.debug: print("processGroupMembers", item['attributes'])
+
+        try:
+            for attribute in item['attributes']:
+                attr_type = str(attribute['type'])
+                if attr_type == 'sAMAccountName':
+                    group_name = attribute['vals'][0].asOctets().decode('utf-8')
+                elif attr_type == 'member':
+                    members = [str(m) for m in attribute['vals']]
+
+            if group_name and members:
+                for member in members:
+                    self.rows.append([group_name, member])
+
+        except Exception as e:
+            logging.debug("Exception", exc_info=True)
+            logging.error(f"Error processing group members: {e}")
+
     def fetch_non_empty_descriptions(self, ldap_conn, search_filter):
         print("Showing users' description if there's any passwords, care.")
         sc = ldap.SimplePagedResultsControl(size=100)
@@ -203,3 +229,18 @@ class SimpleADUsers:
                              searchControls=[sc],
                              perRecordCallback=self.processWhenCreated)
         self._draw_table(self.attributes_list[2])
+
+    def get_members_of(self, ldap_conn, groups):
+        print("Showing members of juicy groups")
+        sc = ldap.SimplePagedResultsControl(size=100)
+
+        for group in groups:
+            # You can filter by CN or sAMAccountName (some envs use CN=Backup Operators, some just the name)
+            group_filter = f"(&(objectClass=group)(sAMAccountName={group}))"
+            ldap_conn.search(
+                searchFilter=group_filter,
+                attributes=self.attributes_list[3],
+                searchControls=[sc],
+                perRecordCallback=self.processGroupMembers)
+
+        self._draw_table(self.attributes_list[3])
