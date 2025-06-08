@@ -11,14 +11,16 @@ The goal is to support red teams, pentesers and researchers in spotting traps se
 
 The script connects to the Domain Controller via **LDAP** and lists user objects with a focus on signs of deception.
 
-It looks for:
+Currently, it:
 
-- **Descriptions that might include passwords**  
-  (e.g. "Password123" in the `description` field)
-- **Users that have never logged in**  
-  (`lastLogon` field is missing or zero)
-- **Recently created accounts**  
-  (`whenCreated` within a short timeframe)
+* **Lists user descriptions** so you can manually check for possible passwords
+  (e.g. `"Password123"` stored in the `description` field)
+* **Shows users who have never logged in**
+  (based on a missing or zeroed `lastLogon` attribute)
+* **Displays account creation dates**
+  so you can identify **recently created users** that may be suspicious
+* **Retrieves members of high-privilege or interesting groups**
+  (like `Backup Operators`, `DnsAdmins`, etc.) — useful for detecting **fake privileged users**
 
 These can all be signals of decoy or trap accounts used in **Active Directory environments**.
 
