@@ -5,7 +5,14 @@ This script performs specific LDAP queries against an Active Directory environme
 
 The goal is to support red teams, pentesers and researchers in spotting traps set up in the AD environment.
 
----
+
+
+> ⚠️ **Disclaimer**
+> This tool does **not automatically** detect honeypots or deceptions in Active Directory.
+> It collects and lists data points (e.g. user descriptions, creation dates, group memberships) that might help you to identify suspicious accounts based on context and experience.
+>
+> Think of it as a helper for manual analysis — not a detection engine.
+
 
 ## What It Does (Currently)
 
