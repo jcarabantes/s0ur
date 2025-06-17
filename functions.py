@@ -1,5 +1,7 @@
 import argparse
 
+VALID_QUERIES = ["descriptions", "logged_users", "created_users", "juicy_groups"]
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Enumerate LDAP users and attributes from Active Directory using Impacket."
@@ -27,6 +29,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-p", "--password",
         help="Password. If not provided, it will prompt."
+    )
+    parser.add_argument(
+        "-q",
+        "--query", 
+        required=True, 
+        help=f"Comma-separated queries to run. Options: {', '.join(VALID_QUERIES)} or 'all'"
     )
     parser.add_argument(
         "--debug",

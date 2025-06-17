@@ -1,6 +1,6 @@
 from impacket.ldap import ldap
 from simpleadusers import SimpleADUsers
-from functions import *
+from functions import VALID_QUERIES, parse_args, banner
 import sys
 import time
 import getpass
@@ -13,7 +13,7 @@ import getpass
 # Deploy-ComputerDeception
 # Deploy-PrivilegedUserDeception
 # check for Protection DenyLogon property (https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1#L779)
-# add --query all or specific ldap query (such as just non-empty descriptions, etc.)
+# check for valid -q options in user input
 # Improve debug output too
 # Add jitter or delays between each query to break a possible hunting chain analysis
 
@@ -38,30 +38,27 @@ def main():
             ldap_conn.login(ad.username, ad.password, ad.domain.split(',')[0].split('=')[1])
 
             search_filter = "(&(objectCategory=person)(objectClass=user))"
+            selected_queries = args.query.lower().split(",")
 
-            # check for obvious descriptions like passwords and be carefull
-            ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
+            if "all" in selected_queries: selected_queries = VALID_QUERIES.copy()
+            if "descriptions" in selected_queries: ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
+            if "logged_users" in selected_queries: ad.never_logged(ldap_conn, search_filter)
+            if "created_users" in selected_queries: ad.recent_users(ldap_conn, search_filter)
 
-            # never logged users
-            ad.never_logged(ldap_conn, search_filter)
-
-            # recent users creation
-            ad.recent_users(ldap_conn, search_filter)
-
-            # users in juicy groups can also be a problem
-            juicy_groups = [
-                "Domain Admins",
-                "Enterprise Admins",
-                "Backup Operators",
-                "Account Operators",
-                "DNSAdmins",
-                "Print Operators",
-                "Server Operators",
-                "Remote Desktop Users",
-                "Power Users",
-                "Schema Admins"
-            ]
-            ad.get_members_of(ldap_conn, juicy_groups)
+            if "juicy_groups" in selected_queries:
+                juicy_groups = [
+                    "Domain Admins",
+                    "Enterprise Admins",
+                    "Backup Operators",
+                    "Account Operators",
+                    "DNSAdmins",
+                    "Print Operators",
+                    "Server Operators",
+                    "Remote Desktop Users",
+                    "Power Users",
+                    "Schema Admins"
+                ]
+                ad.get_members_of(ldap_conn, juicy_groups)
 
             ldap_conn.close()
         except ldap.LDAPSearchError as e:

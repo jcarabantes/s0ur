@@ -33,15 +33,38 @@ These can all be signals of decoy or trap accounts used in **Active Directory en
 
 ---
 
-## Usage
+## **Usage**
 
 ```bash
-python3 s0ur.py ldap -dc-ip 192.168.1.10 -d "DC=evilcorp,DC=local" -u admin
+python3 s0ur.py ldap -dc-ip <DC_IP> -d "DC=domain,DC=local" -u <username> -q <queries>
 ```
 
+> If `-p` (password) is not provided, it will prompt interactively.
+
+### Query Options (required with `--query` / `-q`)
+
+You must specify at least one query using `-q` or `--query`.
+Available query types:
+
+* `descriptions` – list user descriptions (to spot possible passwords)
+* `logged_users` – show users who have **never logged in**
+* `created_users` – display account **creation dates**
+* `juicy_groups` – get members of high-privilege groups
+
+You can also pass multiple types as a comma-separated list:
+
+```bash
+python3 s0ur.py ldap -dc-ip 192.168.1.10 -d "DC=evilcorp,DC=local" -u admin -q descriptions,logged_users
+```
+
+Or use `all` to run **all available checks**:
+
+```bash
+python3 s0ur.py ldap -dc-ip 192.168.1.10 -d "DC=evilcorp,DC=local" -u admin -q all
+```
 # Example
 ```bash
-python s0ur.py ldap -dc-ip 192.168.1.10 -d "DC=evilcorp,DC=local" -u "admin" -p $(cat ../password)
+python s0ur.py ldap -dc-ip 192.168.1.10 -d "DC=evilcorp,DC=local" -u "admin" -p $(cat ../password) --query logged_users
                              59                                                                          
                          10007                                                                           
    50000000003         300000                                                                            
