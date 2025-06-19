@@ -203,6 +203,29 @@ class SimpleADUsers:
             logging.debug("Exception", exc_info=True)
             logging.error(f"Error processing group members: {e}")
 
+
+    def processFGPP(self,item):
+        if not isinstance(item, SearchResultEntry):
+            return
+
+        name = ""
+        fgpp = None
+
+        try:
+            for attribute in item['attributes']:
+                attr_type = str(attribute['type'])
+                if attr_type == 'sAMAccountName':
+                    name = attribute['vals'][0].asOctets().decode('utf-8')
+                elif attr_type == 'msDS-PSOApplied':
+                    fgpp = str(attribute['vals'][0])
+
+            if name and fgpp:
+                self.rows.append([name, fgpp])
+
+        except Exception as e:
+            logging.debug("Exception", exc_info=True)
+            logging.error(f"Error processing FGPP record: {e}")
+
     def fetch_non_empty_descriptions(self, ldap_conn, search_filter):
         print("Showing users' description if there's any passwords, care.")
         sc = ldap.SimplePagedResultsControl(size=100)
@@ -244,3 +267,26 @@ class SimpleADUsers:
                 perRecordCallback=self.processGroupMembers)
 
         self._draw_table(self.attributes_list[3])
+
+    def get_fgpp_policies(self, ldap_conn):
+        print("Listing users and groups with Fine-Grained Password Policies (FGPP) applied")
+        sc = ldap.SimplePagedResultsControl(size=100)
+
+        # Search users
+        user_filter = "(&(objectCategory=person)(objectClass=user)(msDS-PSOApplied=*))"
+        ldap_conn.search(searchFilter=user_filter,
+                        attributes=["sAMAccountName", "msDS-PSOApplied"],
+                        searchControls=[sc],
+                        perRecordCallback=self.processFGPP)
+
+        # Search groups
+        group_filter = "(&(objectCategory=group)(msDS-PSOApplied=*))"
+        ldap_conn.search(searchFilter=group_filter,
+                        attributes=["sAMAccountName", "msDS-PSOApplied"],
+                        searchControls=[sc],
+                        perRecordCallback=self.processFGPP)
+
+        if self.rows:
+            self._draw_table(["Name", "FGPP Applied"])
+        else:
+            print("[-] No users or groups found with FGPP applied.")

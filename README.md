@@ -28,6 +28,8 @@ Currently, it:
   so you can identify **recently created users** that may be suspicious
 * **Retrieves members of high-privilege or interesting groups**
   (like `Backup Operators`, `DnsAdmins`, etc.) — useful for detecting **fake privileged users**
+* **Identifies users and groups with Fine-Grained Password Policies (FGPP)** applied
+(via the msDS-PSOApplied attribute) — these can signal specially configured accounts, which may be decoys or traps
 
 These can all be signals of decoy or trap accounts used in **Active Directory environments**.
 

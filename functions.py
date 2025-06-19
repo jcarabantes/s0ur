@@ -1,6 +1,6 @@
 import argparse
 
-VALID_QUERIES = ["descriptions", "logged_users", "created_users", "juicy_groups"]
+VALID_QUERIES = ["descriptions", "logged_users", "created_users", "juicy_groups", "get_fgpp_policies"]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -63,7 +63,7 @@ def banner() -> None:
           00 00000000008  8 8  00000000000 00                               |_|   (____/ 
           80 0000002 20000 0 00003 5000000 09   
            01 1  80000000 000 00000009 71 20    A python tool that may help to detect AD Honeypots 
-           80  000000000 000007000000000  05          v0.0.1 - jcarabantes - @Mr_RedSmasher
+           80  000000000 000007000000000  05          v0.0.2 - jcarabantes - @Mr_RedSmasher
             00 2000000066000005800000003 08     
              603 00000070000000 000000 505      
                00  000 000000000 000  00        

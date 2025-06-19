@@ -38,6 +38,7 @@ def main():
             ldap_conn.login(ad.username, ad.password, ad.domain.split(',')[0].split('=')[1])
 
             search_filter = "(&(objectCategory=person)(objectClass=user))"
+
             selected_queries = args.query.lower().split(",")
 
             if "all" in selected_queries: selected_queries = VALID_QUERIES.copy()
@@ -59,6 +60,9 @@ def main():
                     "Schema Admins"
                 ]
                 ad.get_members_of(ldap_conn, juicy_groups)
+            
+            # we'll search users and groups with msDS-PSOAppliesTo attr. the content of the Password Setting requires DA tho
+            if "get_fgpp_policies" in selected_queries: ad.get_fgpp_policies(ldap_conn)
 
             ldap_conn.close()
         except ldap.LDAPSearchError as e:
