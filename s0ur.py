@@ -12,7 +12,6 @@ import getpass
 # Deploy-ComputerDeception
 # Deploy-PrivilegedUserDeception
 # check for Protection DenyLogon property (https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1#L779)
-# check for valid -q options in user input
 # Improve debug output too
 # Add jitter or delays between each query to break a possible hunting chain analysis
 
@@ -39,6 +38,10 @@ def main():
             search_filter = "(&(objectCategory=person)(objectClass=user))"
 
             selected_queries = args.query.lower().split(",")
+
+            # check if any query passed by the user is valid:
+            invalid_queries = [q for q in selected_queries if q not in VALID_QUERIES]
+            if invalid_queries: print(f"[!] Invalid query name(s): {', '.join(invalid_queries)}")
 
             if "all" in selected_queries: selected_queries = VALID_QUERIES.copy()
             if "descriptions" in selected_queries: ad.fetch_non_empty_descriptions(ldap_conn, search_filter)

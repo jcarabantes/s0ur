@@ -30,6 +30,8 @@ Currently, it:
   (like `Backup Operators`, `DnsAdmins`, etc.) — useful for detecting **fake privileged users**
 * **Identifies users and groups with Fine-Grained Password Policies (FGPP)** applied
 (via the msDS-PSOApplied attribute) — these can signal specially configured accounts, which may be decoys or traps
+* **Lists accounts that are currently disabled**
+(based on the userAccountControl bitfield) — useful to spot inactive users placed as bait
 
 These can all be signals of decoy or trap accounts used in **Active Directory environments**.
 
@@ -52,6 +54,9 @@ Available query types:
 * `logged_users` – show users who have **never logged in**
 * `created_users` – display account **creation dates**
 * `juicy_groups` – get members of high-privilege groups
+* `fgpp` – list users and groups with **Fine-Grained Password Policies (FGPP)** applied
+* `disabled_accounts` – show accounts that are currently **disabled** (`userAccountControl` flag)
+
 
 You can also pass multiple types as a comma-separated list:
 
