@@ -27,7 +27,7 @@ class SimpleADUsers:
             ["samAccountName", "member"]
         ]
         self.rows = [] # this will be used with tabulate when printing results
-        
+
     def _getUnixTime(self, t):
         t -= 116444736000000000
         t //= 10000000
@@ -203,13 +203,13 @@ class SimpleADUsers:
             logging.debug("Exception", exc_info=True)
             logging.error(f"Error processing group members: {e}")
 
-
     def processFGPP(self,item):
         if not isinstance(item, SearchResultEntry):
             return
 
         name = ""
         fgpp = None
+        if self.debug: print("processFGPP", item['attributes'])
 
         try:
             for attribute in item['attributes']:
@@ -225,6 +225,32 @@ class SimpleADUsers:
         except Exception as e:
             logging.debug("Exception", exc_info=True)
             logging.error(f"Error processing FGPP record: {e}")
+
+    def processDisabledAccount(self, item):
+        if not isinstance(item, SearchResultEntry):
+            return
+
+        sAMAccountName = ''
+        userAccountControl = ''
+
+        if self.debug: print("processDisabledAccount", item['attributes'])
+
+        try:
+            for attribute in item['attributes']:
+                attr_type = str(attribute['type'])
+                if attr_type == 'sAMAccountName':
+                    name = attribute['vals'][0].asOctets().decode('utf-8')
+                    if not name.endswith('$'):
+                        sAMAccountName = name
+                elif attr_type == 'userAccountControl':
+                    userAccountControl = str(attribute['vals'][0])
+
+            if sAMAccountName:
+                self.rows.append([sAMAccountName, userAccountControl])
+
+        except Exception as e:
+            logging.debug("Exception", exc_info=True)
+            logging.error(f"Error processing record: {e}")
 
     def fetch_non_empty_descriptions(self, ldap_conn, search_filter):
         print("Showing users' description if there's any passwords, care.")
@@ -269,6 +295,7 @@ class SimpleADUsers:
         self._draw_table(self.attributes_list[3])
 
     def get_fgpp_policies(self, ldap_conn):
+        """ https://specopssoft.com/blog/create-fine-grained-password-policy-active-directory/ """
         print("Listing users and groups with Fine-Grained Password Policies (FGPP) applied")
         sc = ldap.SimplePagedResultsControl(size=100)
 
@@ -290,3 +317,16 @@ class SimpleADUsers:
             self._draw_table(["Name", "FGPP Applied"])
         else:
             print("[-] No users or groups found with FGPP applied.")
+
+    def disabled_accounts(self, ldap_conn, search_filter=None):
+        print("Showing disabled user accounts")
+
+        sc = ldap.SimplePagedResultsControl(size=100)
+        ldap_conn.search(
+            searchFilter=search_filter,
+            attributes=["sAMAccountName", "userAccountControl"],
+            searchControls=[sc],
+            perRecordCallback=self.processDisabledAccount
+        )
+        self._draw_table(["sAMAccountName", "userAccountControl"])
+

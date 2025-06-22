@@ -6,7 +6,6 @@ import time
 import getpass
 
 # ToDo: 
-# - pending analysis of userAccountControl
 # Continue detection based on: https://github.com/samratashok/Deploy-Deception/blob/master/Deploy-Deception.ps1
 # Deploy-UserDeception
 # Deploy-SlaveDeception
@@ -64,7 +63,14 @@ def main():
             # we'll search users and groups with msDS-PSOAppliesTo attr. the content of the Password Setting requires DA tho
             if "get_fgpp_policies" in selected_queries: ad.get_fgpp_policies(ldap_conn)
 
+            # 1.2.840.113556.1.4.803 -> OID for bitwise AND: https://ldapwiki.com/wiki/Wiki.jsp?page=LDAP_MATCHING_RULE_BIT_AND
+            # :=2 == 0x2 which is for disable accounts: https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties
+            search_filter = "(&(objectCategory=person)(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=2))"
+
+            if "disabled_accounts" in selected_queries: ad.disabled_accounts(ldap_conn, search_filter)
+
             ldap_conn.close()
+            
         except ldap.LDAPSearchError as e:
             logging.error(f"LDAP search failed: {e}")    
     
@@ -73,11 +79,6 @@ def main():
     else:
         print("[-] Unknown mode.")
 
-    
-
-    # extract the Fine-Grained Password Policies (FGPP) or users or groups may help to detect
-    # users with bad passwords policies > possible honeypots
-    # ad.get_password_policies() # pending test first policies.py
   
 if __name__ == "__main__":
     banner()

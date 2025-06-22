@@ -1,6 +1,6 @@
 import argparse
 
-VALID_QUERIES = ["descriptions", "logged_users", "created_users", "juicy_groups", "get_fgpp_policies"]
+VALID_QUERIES = ["descriptions", "logged_users", "created_users", "juicy_groups", "get_fgpp_policies", "disabled_users"]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
