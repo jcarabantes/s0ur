@@ -72,7 +72,7 @@ def main():
             # :=2 == 0x2 which is for disable accounts: https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties
             search_filter = "(&(objectCategory=person)(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=2))"
 
-            if "disabled_accounts" in selected_queries: ad.disabled_accounts(ldap_conn, search_filter)
+            if "disabled_users" in selected_queries: ad.disabled_users(ldap_conn, search_filter)
 
             ldap_conn.close()
             

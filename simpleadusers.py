@@ -28,7 +28,9 @@ class SimpleADUsers:
             ["sAMAccountName", "description"],
             ["sAMAccountName", "lastLogon"],
             ["sAMAccountName", "whenCreated"],
-            ["samAccountName", "member"]
+            ["samAccountName", "member"],
+            ["sAMAccountName", "msDS-PSOApplied"],
+            ["sAMAccountName", "userAccountControl"]
         ]
         self.rows = [] # this will be used with tabulate when printing results
 
@@ -310,33 +312,33 @@ class SimpleADUsers:
         # Search users
         user_filter = "(&(objectCategory=person)(objectClass=user)(msDS-PSOApplied=*))"
         ldap_conn.search(searchFilter=user_filter,
-                        attributes=["sAMAccountName", "msDS-PSOApplied"],
+                        attributes=self.attributes_list[4],
                         searchControls=[sc],
                         perRecordCallback=self.processFGPP)
 
         # Search groups
         group_filter = "(&(objectCategory=group)(msDS-PSOApplied=*))"
         ldap_conn.search(searchFilter=group_filter,
-                        attributes=["sAMAccountName", "msDS-PSOApplied"],
+                        attributes=self.attributes_list[4],
                         searchControls=[sc],
                         perRecordCallback=self.processFGPP)
 
         if self.rows:
-            self._draw_table(["Name", "FGPP Applied"])
+            self._draw_table(self.attributes_list[4])
         else:
             print("[-] No users or groups found with FGPP applied.")
         wait_with_jitter(self.delay, self.jitter)
 
-    def disabled_accounts(self, ldap_conn, search_filter=None):
+    def disabled_users(self, ldap_conn, search_filter=None):
         print("Showing disabled user accounts")
 
         sc = ldap.SimplePagedResultsControl(size=100)
         ldap_conn.search(
             searchFilter=search_filter,
-            attributes=["sAMAccountName", "userAccountControl"],
+            attributes=self.attributes_list[5],
             searchControls=[sc],
             perRecordCallback=self.processDisabledAccount
         )
-        self._draw_table(["sAMAccountName", "userAccountControl"])
+        self._draw_table(self.attributes_list[5])
         wait_with_jitter(self.delay, self.jitter)
 
