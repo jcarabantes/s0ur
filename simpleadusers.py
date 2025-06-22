@@ -6,17 +6,21 @@ from impacket.dcerpc.v5.samr import SAMPR_USER_INFO_BUFFER
 from impacket.dcerpc.v5 import transport
 from tabulate import tabulate
 from datetime import datetime
+from functions import wait_with_jitter
 import logging
+
 
 # Simplified class from GetADUsers.py
 class SimpleADUsers:
     
-    def __init__(self, username, password, domain, dc_ip, debug):
+    def __init__(self, username, password, domain, dc_ip, debug, delay, jitter):
         self.username = username
         self.password = password
         self.domain = domain
         self.dc_ip = dc_ip
         self.debug = debug
+        self.delay = delay
+        self.jitter = jitter
 
         self.baseDN = ','.join([f'dc={part}' for part in domain.replace('DC=', '').split(',')])
         
@@ -260,6 +264,7 @@ class SimpleADUsers:
                             searchControls=[sc],
                             perRecordCallback=self.processDescription)
         self._draw_table(self.attributes_list[0])
+        wait_with_jitter(self.delay, self.jitter)
            
     def never_logged(self, ldap_conn, search_filter):
         print("Showing users that have no logon date")
@@ -269,6 +274,7 @@ class SimpleADUsers:
                              searchControls=[sc],
                              perRecordCallback=self.processLastLogon)
         self._draw_table(self.attributes_list[1])
+        wait_with_jitter(self.delay, self.jitter)
 
     def recent_users(self, ldap_conn, search_filter):
         print("Showing creation date for each user")
@@ -278,6 +284,7 @@ class SimpleADUsers:
                              searchControls=[sc],
                              perRecordCallback=self.processWhenCreated)
         self._draw_table(self.attributes_list[2])
+        wait_with_jitter(self.delay, self.jitter)
 
     def get_members_of(self, ldap_conn, groups):
         print("Showing members of juicy groups")
@@ -293,6 +300,7 @@ class SimpleADUsers:
                 perRecordCallback=self.processGroupMembers)
 
         self._draw_table(self.attributes_list[3])
+        wait_with_jitter(self.delay, self.jitter)
 
     def get_fgpp_policies(self, ldap_conn):
         """ https://specopssoft.com/blog/create-fine-grained-password-policy-active-directory/ """
@@ -317,6 +325,7 @@ class SimpleADUsers:
             self._draw_table(["Name", "FGPP Applied"])
         else:
             print("[-] No users or groups found with FGPP applied.")
+        wait_with_jitter(self.delay, self.jitter)
 
     def disabled_accounts(self, ldap_conn, search_filter=None):
         print("Showing disabled user accounts")
@@ -329,4 +338,5 @@ class SimpleADUsers:
             perRecordCallback=self.processDisabledAccount
         )
         self._draw_table(["sAMAccountName", "userAccountControl"])
+        wait_with_jitter(self.delay, self.jitter)
 

@@ -1,4 +1,7 @@
 import argparse
+import random
+import time
+import sys
 
 VALID_QUERIES = ["descriptions", "logged_users", "created_users", "juicy_groups", "get_fgpp_policies", "disabled_users"]
 
@@ -41,7 +44,35 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable debug mode for verbose output."
     )
+    parser.add_argument(
+        "--delay", 
+        type=int, 
+        default=600, 
+        help="Base delay (in seconds) between queries. Default: 600 (10 minutes)"
+    )
+
+    parser.add_argument(
+        "--jitter", 
+        type=int, 
+        default=20, 
+        help=f"Jitter percentage for delay randomness. Default: 20"
+    )
+
     return parser.parse_args()
+
+def wait_with_jitter(base_delay: int, jitter_percent: int) -> None:
+    jitter_range = base_delay * (jitter_percent / 100)
+    final_delay = base_delay + random.uniform(-jitter_range, jitter_range)
+    final_delay = max(0, int(final_delay))  # convert to int and ensure positive
+
+    print(f"[*] Sleeping for {final_delay} seconds (with jitter)...", end='', flush=True)
+
+    for remaining in range(final_delay, 0, -1):
+        sys.stdout.write(f"\r[*] Sleeping... {remaining:4d} seconds remaining")
+        sys.stdout.flush()
+        time.sleep(1)
+
+    sys.stdout.write("\r[*] Done sleeping.                            \n")
 
 def banner() -> None:
     print(r"""                             59                 

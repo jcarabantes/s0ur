@@ -29,7 +29,7 @@ def main():
         args.password = getpass.getpass("Password: ")
 
     if args.mode == "ldap":
-        ad = SimpleADUsers(args.username, args.password, args.domain, args.dc_ip, args.debug)
+        ad = SimpleADUsers(args.username, args.password, args.domain, args.dc_ip, args.debug, args.delay, args.jitter)
 
         try:
             ldap_conn = ldap.LDAPConnection(f'ldap://{ad.dc_ip}', ad.baseDN)
@@ -41,7 +41,9 @@ def main():
 
             # check if any query passed by the user is valid:
             invalid_queries = [q for q in selected_queries if q not in VALID_QUERIES]
-            if invalid_queries: print(f"[!] Invalid query name(s): {', '.join(invalid_queries)}")
+            if invalid_queries:
+                print(f"[!] Invalid query name(s): {', '.join(invalid_queries)}")
+                sys.exit(1)
 
             if "all" in selected_queries: selected_queries = VALID_QUERIES.copy()
             if "descriptions" in selected_queries: ad.fetch_non_empty_descriptions(ldap_conn, search_filter)
